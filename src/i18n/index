@@ -1,0 +1,283 @@
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import LanguageDetector from 'i18next-browser-languagedetector';
+
+// Import translations
+import en from './locales/en.json';
+import es from './locales/es.json';
+import fr from './locales/fr.json';
+import de from './locales/de.json';
+import zhCN from './locales/zh-CN.json';
+import zhTW from './locales/zh-TW.json';
+import ja from './locales/ja.json';
+import ko from './locales/ko.json';
+import pt from './locales/pt.json';
+import ru from './locales/ru.json';
+import ar from './locales/ar.json';
+
+// Backend messages
+import backendEn from './locales/backend-en.json';
+import backendEs from './locales/backend-es.json';
+import backendFr from './locales/backend-fr.json';
+import backendDe from './locales/backend-de.json';
+import backendZhCN from './locales/backend-zh-CN.json';
+import backendZhTW from './locales/backend-zh-TW.json';
+import backendJa from './locales/backend-ja.json';
+import backendKo from './locales/backend-ko.json';
+import backendPt from './locales/backend-pt.json';
+import backendRu from './locales/backend-ru.json';
+import backendAr from './locales/backend-ar.json';
+
+const resources = {
+  en: {
+    translation: en,
+    backend: backendEn
+  },
+  es: {
+    translation: es,
+    backend: backendEs
+  },
+  fr: {
+    translation: fr,
+    backend: backendFr
+  },
+  de: {
+    translation: de,
+    backend: backendDe
+  },
+  'zh-CN': {
+    translation: zhCN,
+    backend: backendZhCN
+  },
+  'zh-TW': {
+    translation: zhTW,
+    backend: backendZhTW
+  },
+  ja: {
+    translation: ja,
+    backend: backendJa
+  },
+  ko: {
+    translation: ko,
+    backend: backendKo
+  },
+  pt: {
+    translation: pt,
+    backend: backendPt
+  },
+  ru: {
+    translation: ru,
+    backend: backendRu
+  },
+  ar: {
+    translation: ar,
+    backend: backendAr
+  }
+};
+
+// RTL languages
+const rtlLanguages = ['ar', 'he', 'fa', 'ur', 'dv', 'ku'];
+
+// Language names for UI display
+const languageNames: Record<string, string> = {
+  en: 'English',
+  es: 'Español',
+  fr: 'Français',
+  de: 'Deutsch',
+  'zh-CN': '中文 (简体)',
+  'zh-TW': '中文 (繁體)',
+  ja: '日本語',
+  ko: '한국어',
+  pt: 'Português',
+  ru: 'Русский',
+  ar: 'العربية'
+};
+
+// Currency symbols
+const currencySymbols: Record<string, string> = {
+  en: '$',
+  es: '€',
+  fr: '€',
+  de: '€',
+  'zh-CN': '¥',
+  'zh-TW': '¥',
+  ja: '¥',
+  ko: '₩',
+  pt: 'R$',
+  ru: '₽',
+  ar: 'ر.س'
+};
+
+// Date formats
+const dateFormats: Record<string, string> = {
+  en: 'MM/dd/yyyy',
+  es: 'dd/MM/yyyy',
+  fr: 'dd/MM/yyyy',
+  de: 'dd.MM.yyyy',
+  'zh-CN': 'yyyy/MM/dd',
+  'zh-TW': 'yyyy/MM/dd',
+  ja: 'yyyy/MM/dd',
+  ko: 'yyyy. MM. dd',
+  pt: 'dd/MM/yyyy',
+  ru: 'dd.MM.yyyy',
+  ar: 'dd/MM/yyyy'
+};
+
+// Number formats
+const numberFormats: Record<string, string> = {
+  en: 'en-US',
+  es: 'es-ES',
+  fr: 'fr-FR',
+  de: 'de-DE',
+  'zh-CN': 'zh-CN',
+  'zh-TW': 'zh-TW',
+  ja: 'ja-JP',
+  ko: 'ko-KR',
+  pt: 'pt-BR',
+  ru: 'ru-RU',
+  ar: 'ar-SA'
+};
+
+i18n
+  .use(LanguageDetector)
+  .use(initReactI18next)
+  .init({
+    resources,
+    fallbackLng: 'en',
+    debug: process.env.NODE_ENV === 'development',
+    
+    interpolation: {
+      escapeValue: false
+    },
+    
+    detection: {
+      order: [
+        'localStorage',
+        'navigator',
+        'htmlTag',
+        'path',
+        'subdomain'
+      ],
+      lookupLocalStorage: 'i18nextLng',
+      caches: ['localStorage']
+    },
+    
+    // Namespace configuration
+    defaultNS: 'translation',
+    ns: ['translation', 'backend'],
+    
+    // React specific options
+    react: {
+      useSuspense: false,
+      bindI18n: 'languageChanged loaded',
+      bindI18nStore: 'added removed',
+      transEmptyNodeValue: '',
+      transSupportBasicHtmlNodes: true,
+      transKeepBasicHtmlNodesFor: ['br', 'strong', 'i'],
+    },
+    
+    // Backend configuration
+    backend: {
+      // In a real app, you might load from API endpoints
+      // For now, we're using static files
+    }
+  });
+
+// Helper functions
+export const i18nHelpers = {
+  // Check if language is RTL
+  isRTL: (language: string): boolean => {
+    return rtlLanguages.includes(language);
+  },
+
+  // Get language direction
+  getDirection: (language: string): 'ltr' | 'rtl' => {
+    return i18nHelpers.isRTL(language) ? 'rtl' : 'ltr';
+  },
+
+  // Get display name for language
+  getDisplayName: (language: string): string => {
+    return languageNames[language] || language;
+  },
+
+  // Get currency symbol
+  getCurrencySymbol: (language: string): string => {
+    return currencySymbols[language] || '$';
+  },
+
+  // Get date format
+  getDateFormat: (language: string): string => {
+    return dateFormats[language] || 'MM/dd/yyyy';
+  },
+
+  // Get number format locale
+  getNumberFormat: (language: string): string => {
+    return numberFormats[language] || 'en-US';
+  },
+
+  // Format currency
+  formatCurrency: (amount: number, language: string, currency: string = 'USD'): string => {
+    return new Intl.NumberFormat(numberFormats[language] || 'en-US', {
+      style: 'currency',
+      currency: currency
+    }).format(amount);
+  },
+
+  // Format number
+  formatNumber: (number: number, language: string): string => {
+    return new Intl.NumberFormat(numberFormats[language] || 'en-US').format(number);
+  },
+
+  // Format date
+  formatDate: (date: Date, language: string, format?: string): string => {
+    const locale = numberFormats[language] || 'en-US';
+    const options: Intl.DateTimeFormatOptions = {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    };
+    
+    return new Intl.DateTimeFormat(locale, options).format(date);
+  },
+
+  // Format time
+  formatTime: (date: Date, language: string): string => {
+    const locale = numberFormats[language] || 'en-US';
+    return new Intl.DateTimeFormat(locale, {
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
+  },
+
+  // Get all supported languages
+  getSupportedLanguages: (): Array<{ code: string; name: string; rtl: boolean }> => {
+    return Object.keys(languageNames).map(code => ({
+      code,
+      name: languageNames[code],
+      rtl: i18nHelpers.isRTL(code)
+    }));
+  },
+
+  // Change language with persistence
+  changeLanguage: async (language: string): Promise<void> => {
+    await i18n.changeLanguage(language);
+    localStorage.setItem('i18nextLng', language);
+    
+    // Update document direction
+    const direction = i18nHelpers.getDirection(language);
+    document.documentElement.dir = direction;
+    document.documentElement.lang = language;
+  },
+
+  // Initialize with detected language
+  initialize: (): void => {
+    const currentLanguage = i18n.language || 'en';
+    const direction = i18nHelpers.getDirection(currentLanguage);
+    
+    document.documentElement.dir = direction;
+    document.documentElement.lang = currentLanguage;
+  }
+};
+
+// Export default i18n instance
+export default i18n;
