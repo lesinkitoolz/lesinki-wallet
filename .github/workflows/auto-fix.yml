@@ -24,13 +24,37 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Detect repository layout
+      - name: Detect package directory
         id: detect
+        shell: bash
         run: |
-          echo "has_package_json=false" >> $GITHUB_OUTPUT
-          echo "has_cargo_toml=false" >> $GITHUB_OUTPUT
-          if [ -f package.json ]; then echo "has_package_json=true" >> $GITHUB_OUTPUT; fi
-          if [ -f Cargo.toml ]; then echo "has_cargo_toml=true" >> $GITHUB_OUTPUT; fi
+          # Find package.json in root or common subdirectories
+          PACKAGE_DIR=""
+          for dir in . src frontend web public ""; do
+            if [ -f "$dir/package.json" ]; then
+              PACKAGE_DIR="$dir"
+              break
+            fi
+          done
+          
+          if [ -z "$PACKAGE_DIR" ]; then
+            echo "❌ No package.json found anywhere in repository"
+            echo "has_package_json=false" >> $GITHUB_OUTPUT
+            echo "package_dir=" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Found package.json in: $PACKAGE_DIR"
+            echo "has_package_json=true" >> $GITHUB_OUTPUT
+            echo "package_dir=$PACKAGE_DIR" >> $GITHUB_OUTPUT
+          fi
+          
+          # Check for Rust workspace
+          if [ -f Cargo.toml ]; then
+            echo "✅ Found Cargo.toml in repository root"
+            echo "has_cargo_toml=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ No Cargo.toml found in repository"
+            echo "has_cargo_toml=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Setup Node (if JS/TS present)
         if: steps.detect.outputs.has_package_json == 'true'
@@ -38,28 +62,50 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: ${{ steps.detect.outputs.package_dir }}/package-lock.json
 
-      - name: Install node deps (if package.json exists)
+      - name: Install dependencies (if package.json exists)
         if: steps.detect.outputs.has_package_json == 'true'
+        working-directory: ${{ steps.detect.outputs.package_dir || '.' }}
         run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          echo "🔍 Working in directory: $(pwd)"
+          echo "📁 Looking for lock files..."
+          
+          if [ -f "package-lock.json" ]; then
+            echo "✅ Found package-lock.json - using npm ci"
+            npm ci
+          elif [ -f "yarn.lock" ]; then
+            echo "✅ Found yarn.lock - using yarn install"
+            yarn install --frozen-lockfile
+          else
+            echo "⚠️  No lock file found - using npm install"
+            npm install
+          fi
 
       - name: Run npm fix (if package.json exists)
         if: steps.detect.outputs.has_package_json == 'true'
+        working-directory: ${{ steps.detect.outputs.package_dir || '.' }}
         run: |
-          if npm run | grep -q "fix"; then
-            npm run fix || echo "npm run fix exited non-zero"
+          echo "🔧 Running npm fix script..."
+          if npm run --silent | grep -q "\"fix\""; then
+            echo "✅ Running: npm run fix"
+            npm run fix
           else
-            echo "No npm 'fix' script found in package.json"
+            echo "⚠️  No 'fix' script found in package.json"
+            echo "💡 Running: npm run lint:fix"
+            npm run lint:fix || echo "lint:fix failed (continuing...)"
           fi
 
       - name: Build JS/TS (if package.json exists)
         if: steps.detect.outputs.has_package_json == 'true'
+        working-directory: ${{ steps.detect.outputs.package_dir || '.' }}
         run: |
-          if npm run | grep -q "build"; then
-            npm run build || echo "npm run build failed"
+          echo "🏗️  Building JavaScript/TypeScript..."
+          if npm run --silent | grep -q "\"build\""; then
+            echo "✅ Running: npm run build"
+            npm run build
           else
-            echo "No npm 'build' script found in package.json"
+            echo "⚠️  No 'build' script found in package.json"
           fi
 
       - name: Setup Rust toolchain (if Cargo.toml present)
@@ -68,27 +114,36 @@ jobs:
         with:
           toolchain: stable
           override: true
+          components: rustfmt
 
       - name: Run rustfmt (if Cargo.toml exists)
         if: steps.detect.outputs.has_cargo_toml == 'true'
         run: |
-          rustup component add rustfmt || true
-          cargo fmt --all || true
+          echo "🔧 Running Rust formatting..."
+          rustfmt --edition 2021 --check $(find . -name "*.rs") || echo "Some Rust files may need formatting"
 
       - name: Build Rust workspace (if Cargo.toml exists)
         if: steps.detect.outputs.has_cargo_toml == 'true'
         run: |
-          cargo build --workspace --locked || echo "cargo build failed"
+          echo "🏗️  Building Rust workspace..."
+          cargo build --workspace --locked || echo "cargo build failed (continuing...)"
 
       - name: Stage changes & commit
         id: changes
         run: |
+          echo "📝 Staging changes for commit..."
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Add all changes
           git add -A
+          
+          # Check if there are any changes
           if git diff --staged --quiet; then
+            echo "❌ No changes to commit"
             echo "no_changes=true" >> $GITHUB_OUTPUT
           else
+            echo "✅ Changes detected - committing..."
             git commit -m "chore: apply auto fixes and formatting from CI" || echo "commit failed"
             echo "no_changes=false" >> $GITHUB_OUTPUT
           fi
@@ -101,22 +156,32 @@ jobs:
           BRANCH_NAME: ${{ github.ref_name }}
           HEAD_REF: ${{ github.head_ref }}
         run: |
+          echo "🚀 Pushing changes back to repository..."
+          
+          # Determine branch name
           BRANCH="$BRANCH_NAME"
           if [ -z "$BRANCH" ] || [ "$BRANCH" = "null" ]; then
             BRANCH="$HEAD_REF"
           fi
+          
           if [ -z "$BRANCH" ]; then
-            echo "Could not determine branch name to push to; aborting push."
+            echo "❌ Could not determine branch name to push to"
             exit 1
           fi
+          
+          echo "📤 Pushing to branch: $BRANCH"
 
+          # Use appropriate token
           if [ -n "$REPO_WRITE_TOKEN" ]; then
             TOKEN="$REPO_WRITE_TOKEN"
-            echo "Using REPO_WRITE_TOKEN"
+            echo "🔑 Using REPO_WRITE_TOKEN"
           else
             TOKEN="$GITHUB_TOKEN"
-            echo "Using GITHUB_TOKEN"
+            echo "🔑 Using GITHUB_TOKEN"
           fi
 
+          # Set remote URL and push
           git remote set-url origin "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git"
           git push origin "HEAD:$BRANCH"
+          
+          echo "✅ Successfully pushed changes to $BRANCH"

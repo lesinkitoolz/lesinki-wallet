@@ -5,6 +5,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+# IMPORTANT: Keep package-lock.json for CI/CD
+!package-lock.json
+# IMPORTANT: Keep yarn.lock for CI/CD
+!yarn.lock
 
 # Build outputs
 dist/
