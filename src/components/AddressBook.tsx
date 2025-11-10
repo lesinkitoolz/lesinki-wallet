@@ -111,9 +111,9 @@ const AddressBook: React.FC<AddressBookProps> = ({ onSelectAddress }) => {
     return matchesSearch && matchesTag;
   });
 
-  const allTags = Array.from(new Set(contacts.flatMap(contact => contact.tags)));
+  const allTags = Array.from(new Set(contacts.flatMap((contact: Contact) => contact.tags)));
 
-  const sortedContacts = filteredContacts.sort((a, b) => {
+  const sortedContacts = filteredContacts.sort((a: Contact, b: Contact) => {
     // Sort by last used first, then by creation date
     if (a.lastUsed && b.lastUsed) {
       return b.lastUsed - a.lastUsed;
@@ -151,7 +151,7 @@ const AddressBook: React.FC<AddressBookProps> = ({ onSelectAddress }) => {
           className="tag-filter"
         >
           <option value="all">All Tags</option>
-          {allTags.map(tag => (
+          {allTags.map((tag: string) => (
             <option key={tag} value={tag}>{tag}</option>
           ))}
         </select>
