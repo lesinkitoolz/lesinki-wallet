@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: write
+  security-events: write
+  checks: write
+  actions: write
+  pull-requests: write
+  id-token: write
+
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
@@ -17,10 +25,10 @@ jobs:
     
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       
     - name: Setup Node
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
@@ -41,26 +49,33 @@ jobs:
       run: npm run build || echo "Build completed"
       
     - name: Setup Rust
-      uses: dtolnay/rust-toolchain@1.70
+      uses: dtolnay/rust-toolchain@stable
       with:
         components: clippy, rustfmt
         
     - name: Rust cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
-        path: ~/.cargo/registry
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         
     - name: Rust cache build
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
-        path: target
+        path: src-tauri/target
         key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
         
     - name: Install system deps
       run: |
         sudo apt-get update
         sudo apt-get install -y libwebkit2gtk-4.0-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+        
+    - name: Install Rust dependencies
+      run: |
+        cd src-tauri
+        cargo check --no-default-features
         
     - name: Clippy
       run: cargo clippy -- -D warnings || echo "Clippy completed"
@@ -72,11 +87,11 @@ jobs:
       run: cargo test || echo "Tests completed"
       
     - name: Build app
-      run: cargo tauri build || echo "Build completed"
+      run: cargo tauri build
       continue-on-error: true
       
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: build-artifacts
         path: 'src-tauri/target/release/bundle/'
@@ -89,10 +104,10 @@ jobs:
     
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       
     - name: Setup Node
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
@@ -112,29 +127,31 @@ jobs:
     
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       
     - name: Setup Node
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '18'
         cache: 'npm'
         
     - name: Build
-      run: npm run build && cargo tauri build || echo "Build completed"
+      run: |
+        npm run build
+        cd src-tauri && cargo tauri build
       continue-on-error: true
       
     - name: Download artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: build-artifacts
-        path: ./release-artifacts || echo "Download completed"
+        path: ./release-artifacts
       continue-on-error: true
       
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        files: ./release-artifacts/** || echo "Release created"
+        files: ./release-artifacts/**
         body: |
           ## Changes in this release:
           
